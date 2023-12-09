@@ -1,7 +1,7 @@
-<<<<<<< HEAD
+
 # Moneyman
 This application functions to manage finances. Users will add transactions based on date and record all expenses and income, thereby helping users to calculate their finances
-=======
+
 # moneyman
 
 A new Flutter project.
@@ -18,4 +18,3 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
->>>>>>> 99959b0 (UI/UX & konfigurasi awal proyek)
