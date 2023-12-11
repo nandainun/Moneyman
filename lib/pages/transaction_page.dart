@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:moneyman/models/database.dart';
 
 class TransactionPage extends StatefulWidget {
   const TransactionPage({super.key});
@@ -11,9 +12,42 @@ class TransactionPage extends StatefulWidget {
 
 class _TransactionPageState extends State<TransactionPage> {
   bool isExpense = true;
+  late int type;
   List<String> list = ['Makan', 'Minum', 'Nonton'];
   late String dropdownValue = list.first;
+  final AppDatabase database = AppDatabase();
   TextEditingController dateController = TextEditingController();
+  TextEditingController amountController = TextEditingController();
+  TextEditingController descController = TextEditingController();
+  Category? selectedCategory;
+
+  // CRUD TRANSACTIONS
+  Future insert(
+      int amount, DateTime date, String nameDesc, int categoryId) async {
+    DateTime now = DateTime.now();
+    final row = await database.into(database.transactions).insertReturning(
+          TransactionsCompanion.insert(
+            name: nameDesc,
+            category_id: categoryId,
+            transaction_date: date,
+            amount: amount,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+    print('Test :' + row.toString());
+  }
+
+  Future<List<Category>> getAllCategoryRepo(int type) async {
+    return await database.getAllCategoryRepo(type);
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    type = 2;
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +78,8 @@ class _TransactionPageState extends State<TransactionPage> {
                       onChanged: (bool value) {
                         setState(() {
                           isExpense = value;
+                          type = (isExpense) ? 2 : 1;
+                          selectedCategory = null;
                         });
                       },
                       activeColor: Colors.red,
@@ -59,6 +95,7 @@ class _TransactionPageState extends State<TransactionPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextFormField(
+                  controller: amountController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
@@ -86,29 +123,55 @@ class _TransactionPageState extends State<TransactionPage> {
               ),
 
               // DROPDOWN BUTTON
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: DropdownButtonFormField<String>(
-                  value: dropdownValue,
-                  isExpanded: true,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      dropdownValue = newValue!;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  items: list.map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-              ),
+              FutureBuilder<List<Category>>(
+                  future: getAllCategoryRepo(type),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    } else {
+                      if (snapshot.hasData) {
+                        if (snapshot.data!.length > 0) {
+                          selectedCategory = snapshot.data!.first;
+                          print('Apanih : ' + snapshot.toString());
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: DropdownButtonFormField<Category>(
+                                value: (selectedCategory == null)
+                                    ? snapshot.data!.first
+                                    : selectedCategory,
+                                isExpanded: true,
+                                onChanged: (Category? newValue) {
+                                  setState(() {
+                                    selectedCategory = newValue;
+                                  });
+                                },
+                                decoration: InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                items: snapshot.data!.map((Category item) {
+                                  return DropdownMenuItem<Category>(
+                                    value: item,
+                                    child: Text(item.name),
+                                  );
+                                }).toList()),
+                          );
+                        } else {
+                          return Center(
+                            child: Text('Tidak ada kategori'),
+                          );
+                        }
+                      } else {
+                        return Center(
+                          child: Text('Tidak ada kategori'),
+                        );
+                      }
+                    }
+                  }),
+
               SizedBox(
                 height: 20,
               ),
@@ -116,7 +179,7 @@ class _TransactionPageState extends State<TransactionPage> {
               // DATE PICKER
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
+                child: TextFormField(
                   readOnly: true,
                   controller: dateController,
                   decoration: InputDecoration(
@@ -147,6 +210,24 @@ class _TransactionPageState extends State<TransactionPage> {
                 height: 20,
               ),
 
+              // DESCRIPTION
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextFormField(
+                  controller: descController,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(width: 40),
+                    ),
+                    labelText: 'Description',
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 20,
+              ),
+
               // SAVE BUTTON
               Center(
                 child: ElevatedButton(
@@ -154,7 +235,21 @@ class _TransactionPageState extends State<TransactionPage> {
                     backgroundColor:
                         MaterialStateProperty.all<Color>(Colors.green),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    String formattedDate = DateFormat("yyyy-MM-dd").format(
+                      DateFormat("dd-MM-yyyy").parse(dateController.text),
+                    );
+
+                    dateController.text = formattedDate;
+                    insert(
+                        int.parse(amountController.text),
+                        DateTime.parse(formattedDate),
+                        descController.text,
+                        selectedCategory!.id);
+                    print('amount' + amountController.text.toString());
+                    print('date' + dateController.text.toString());
+                    print('desc' + descController.text.toString());
+                  },
                   child: Text(
                     'Save',
                     style: GoogleFonts.poppins(
