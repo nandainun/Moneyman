@@ -27,8 +27,18 @@ class _CategoryPageState extends State<CategoryPage> {
     print(row);
   }
 
+  // CRUD CATEGORY
   Future<List<Category>> getAllCategoryRepo(int type) async {
     return await database.getAllCategoryRepo(type);
+  }
+
+  Future update(int categoryId, String newName) async {
+    return await database.updateCategoryRepo(categoryId, newName);
+  }
+
+  Future deleteCategoryRepo(int categoryId) async {
+    return await database.deleteCategoryRepo(categoryId);
+    // (delete(categories)..where((tbl) => tbl.id.equals(id))).go();
   }
 
   // ADD BUTTON
@@ -69,7 +79,10 @@ class _CategoryPageState extends State<CategoryPage> {
                       backgroundColor: Colors.green,
                     ),
                     onPressed: () {
-                      insert(categoryNameController.text, isExpense ? 2 : 1);
+                      (category == null)
+                          ? insert(
+                              categoryNameController.text, isExpense ? 2 : 1)
+                          : update(category.id, categoryNameController.text);
                       Navigator.of(context, rootNavigator: true).pop('dialog');
                       setState(() {});
                       categoryNameController.clear();
@@ -89,7 +102,7 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   // DELETE BUTTON
-  void deleteDialog() {
+  void deleteDialog(int categoryId) {
     Dialogs.materialDialog(
       msg: 'Are you sure ? you can\'t undo this',
       title: "Delete",
@@ -97,14 +110,22 @@ class _CategoryPageState extends State<CategoryPage> {
       context: context,
       actions: [
         IconsOutlineButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.pop(context);
+          },
           text: 'Cancel',
           iconData: Icons.cancel_outlined,
           textStyle: TextStyle(color: Colors.grey),
           iconColor: Colors.grey,
         ),
         IconsButton(
-          onPressed: () {},
+          onPressed: () {
+            deleteCategoryRepo(categoryId).then((_) {
+              // Setelah penghapusan selesai, tutup dialog dan refresh tampilan
+              Navigator.pop(context);
+              setState(() {});
+            });
+          },
           text: 'Delete',
           iconData: Icons.delete,
           color: Colors.red,
@@ -177,7 +198,8 @@ class _CategoryPageState extends State<CategoryPage> {
                                     children: [
                                       IconButton(
                                         onPressed: () {
-                                          deleteDialog();
+                                          deleteDialog(
+                                              snapshot.data![index].id);
                                         },
                                         icon: Icon(Icons.delete),
                                       ),
