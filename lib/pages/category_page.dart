@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:material_dialogs/material_dialogs.dart';
 import 'package:material_dialogs/widgets/buttons/icon_button.dart';
 import 'package:material_dialogs/widgets/buttons/icon_outline_button.dart';
+import 'package:moneyman/models/database.dart';
 
 class CategoryPage extends StatefulWidget {
   const CategoryPage({super.key});
@@ -13,9 +14,28 @@ class CategoryPage extends StatefulWidget {
 }
 
 class _CategoryPageState extends State<CategoryPage> {
-  bool isExpense = false;
+  bool isExpense = true;
+  int type = 2;
+  final AppDatabase database = AppDatabase();
+  TextEditingController categoryNameController = TextEditingController();
+
+  Future insert(String name, int type) async {
+    DateTime now = DateTime.now();
+    final row = await database.into(database.categories).insertReturning(
+        CategoriesCompanion.insert(
+            name: name, type: type, createdAt: now, updatedAt: now));
+    print(row);
+  }
+
+  Future<List<Category>> getAllCategoryRepo(int type) async {
+    return await database.getAllCategoryRepo(type);
+  }
+
   // ADD BUTTON
-  void openDialog() {
+  void openDialog(Category? category) {
+    if (category != null) {
+      categoryNameController.text = category.name;
+    }
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -35,6 +55,7 @@ class _CategoryPageState extends State<CategoryPage> {
                     height: 10,
                   ),
                   TextFormField(
+                    controller: categoryNameController,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(),
                       hintText: "Name",
@@ -47,7 +68,12 @@ class _CategoryPageState extends State<CategoryPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      insert(categoryNameController.text, isExpense ? 2 : 1);
+                      Navigator.of(context, rootNavigator: true).pop('dialog');
+                      setState(() {});
+                      categoryNameController.clear();
+                    },
                     child: Text(
                       "Save",
                       style: TextStyle(color: Colors.white),
@@ -112,95 +138,88 @@ class _CategoryPageState extends State<CategoryPage> {
                     setState(
                       () {
                         isExpense = val;
+                        type = val ? 2 : 1;
                       },
                     );
                   },
                 ),
                 IconButton(
                   onPressed: () {
-                    openDialog();
+                    openDialog(null);
                   },
                   icon: Icon(Icons.add),
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Card(
-              elevation: 10,
-              child: ListTile(
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        deleteDialog();
-                      },
-                      icon: Icon(Icons.delete),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: Icon(Icons.edit),
-                    ),
-                  ],
-                ),
-                title: Text(
-                  'Sedekah',
-                  style: TextStyle(fontSize: 18),
-                ),
-                leading: (isExpense)
-                    ? Icon(
-                        Icons.upload,
-                        color: Colors.red,
-                        size: 30,
-                      )
-                    : Icon(
-                        Icons.download,
-                        color: Colors.green,
-                        size: 30,
-                      ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Card(
-              elevation: 10,
-              child: ListTile(
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () {
-                        deleteDialog();
-                      },
-                      icon: Icon(Icons.delete),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: Icon(Icons.edit),
-                    ),
-                  ],
-                ),
-                title: Text(
-                  'Makan',
-                  style: TextStyle(fontSize: 18),
-                ),
-                leading: (isExpense)
-                    ? Icon(
-                        Icons.upload,
-                        color: Colors.red,
-                        size: 30,
-                      )
-                    : Icon(
-                        Icons.download,
-                        color: Colors.green,
-                        size: 30,
-                      ),
-              ),
-            ),
-          ),
+          FutureBuilder<List<Category>>(
+              future: getAllCategoryRepo(type),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                } else {
+                  if (snapshot.hasData) {
+                    if (snapshot.data!.length > 0) {
+                      return ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Card(
+                                elevation: 10,
+                                child: ListTile(
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          deleteDialog();
+                                        },
+                                        icon: Icon(Icons.delete),
+                                      ),
+                                      IconButton(
+                                        onPressed: () {
+                                          openDialog(snapshot.data![index]);
+                                        },
+                                        icon: Icon(Icons.edit),
+                                      ),
+                                    ],
+                                  ),
+                                  title: Text(
+                                    snapshot.data![index].name,
+                                    style: TextStyle(fontSize: 18),
+                                  ),
+                                  leading: (isExpense)
+                                      ? Icon(
+                                          Icons.upload,
+                                          color: Colors.red,
+                                          size: 30,
+                                        )
+                                      : Icon(
+                                          Icons.download,
+                                          color: Colors.green,
+                                          size: 30,
+                                        ),
+                                ),
+                              ),
+                            );
+                          });
+                    } else {
+                      return Center(
+                        child: Text('Tidak ada data'),
+                      );
+                    }
+                  } else {
+                    return Center(
+                      child: Text('Tidak ada data'),
+                    );
+                  }
+                }
+              }),
         ],
       ),
     );
