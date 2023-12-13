@@ -52,6 +52,44 @@ class AppDatabase extends _$AppDatabase {
   Future deleteCategoryRepo(int id) async {
     return (delete(categories)..where((tbl) => tbl.id.equals(id))).go();
   }
+
+  // TRANSACTIONS
+  Stream<List<TransactionWithCategory>> getTransactionByDateRepo(
+      DateTime date) {
+    final query = select(transactions).join([
+      innerJoin(categories, categories.id.equalsExp(transactions.category_id))
+    ])
+      ..where(transactions.transaction_date.equals(date));
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return TransactionWithCategory(
+            row.readTable(transactions), row.readTable(categories));
+      }).toList();
+    });
+  }
+
+  Future updateTransactionRepo(int id, int amount, int categoryId,
+      DateTime transactionDate, String nameDesc) async {
+    return (update(transactions)..where((tbl) => tbl.id.equals(id))).write(
+      TransactionsCompanion(
+        name: Value(nameDesc),
+        amount: Value(amount),
+        category_id: Value(categoryId),
+        transaction_date: Value(transactionDate),
+      ),
+    );
+  }
+
+  Future deleteTransactionRepo(int id) async {
+    return (delete(transactions)..where((tbl) => tbl.id.equals(id))).go();
+  }
+}
+
+class TransactionWithCategory {
+  final transaction;
+  final category;
+  TransactionWithCategory(this.transaction, this.category);
 }
 
 LazyDatabase _openConnection() {

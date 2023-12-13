@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:moneyman/models/database.dart';
+import 'package:moneyman/pages/transaction_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final DateTime selectedDate;
+  const HomePage({super.key, required this.selectedDate});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  final AppDatabase database = AppDatabase();
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -124,105 +129,94 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // LIST TRANSACTION
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                elevation: 10,
-                child: ListTile(
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.delete),
-                      SizedBox(
-                        width: 10,
-                      ),
-                      Icon(Icons.edit),
-                    ],
-                  ),
-                  title: Text(
-                    '20.000',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('Makan Siang'),
-                  leading: Container(
-                    child: Icon(
-                      Icons.upload,
-                      color: Colors.red,
-                      size: 30,
-                    ),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                elevation: 10,
-                child: ListTile(
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.delete),
-                      SizedBox(
-                        width: 10,
-                      ),
-                      Icon(Icons.edit),
-                    ],
-                  ),
-                  title: Text(
-                    '3.000.000',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('Gaji Bulanan'),
-                  leading: Container(
-                    child: Icon(
-                      Icons.upload,
-                      color: Colors.green,
-                      size: 30,
-                    ),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                elevation: 10,
-                child: ListTile(
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.delete),
-                      SizedBox(
-                        width: 10,
-                      ),
-                      Icon(Icons.edit),
-                    ],
-                  ),
-                  title: Text(
-                    '3.000.000',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('Gaji Bulanan'),
-                  leading: Container(
-                    child: Icon(
-                      Icons.upload,
-                      color: Colors.green,
-                      size: 30,
-                    ),
-                    decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
+            StreamBuilder<List<TransactionWithCategory>>(
+              stream: database.getTransactionByDateRepo(widget.selectedDate),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(),
+                  );
+                } else {
+                  if (snapshot.hasData) {
+                    if (snapshot.data!.length > 0) {
+                      return ListView.builder(
+                        physics: NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Card(
+                              elevation: 3,
+                              child: ListTile(
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                        onPressed: () async {
+                                          await database.deleteTransactionRepo(
+                                              snapshot
+                                                  .data![index].transaction.id);
+                                          setState(() {});
+                                        },
+                                        icon: (Icon(Icons.delete))),
+                                    SizedBox(
+                                      width: 10,
+                                    ),
+                                    IconButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                TransactionPage(
+                                              transactionWithCategory:
+                                                  snapshot.data![index],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      icon: (Icon(Icons.edit)),
+                                    ),
+                                  ],
+                                ),
+                                title: Text(
+                                  'Rp. ' +
+                                      snapshot.data![index].transaction.amount
+                                          .toString(),
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                    snapshot.data![index].category.name +
+                                        ' (' +
+                                        snapshot.data![index].transaction.name +
+                                        ')'),
+                                leading: Container(
+                                  child: (snapshot.data![index].category.type ==
+                                          2)
+                                      ? Icon(Icons.upload, color: Colors.red)
+                                      : Icon(Icons.download,
+                                          color: Colors.green),
+                                  decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    } else {
+                      return Center(
+                        child: Text('Tidak ada transaksi'),
+                      );
+                    }
+                  } else {
+                    return Center(
+                      child: Text('Tidak ada data'),
+                    );
+                  }
+                }
+              },
             ),
           ],
         ),

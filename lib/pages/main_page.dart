@@ -1,6 +1,7 @@
 import 'package:calendar_appbar/calendar_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:moneyman/pages/category_page.dart';
 import 'package:moneyman/pages/home_page.dart';
 import 'package:moneyman/pages/transaction_page.dart';
@@ -13,12 +14,29 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  final List<Widget> _children = [HomePage(), CategoryPage()];
-  int currentIndex = 0;
+  late DateTime selectedDate;
+  late List<Widget> _children;
+  late int currentIndex;
 
-  void onTapTapped(int index) {
+  @override
+  void initState() {
+    updateView(0, DateTime.now());
+    super.initState();
+  }
+
+  void updateView(int index, DateTime? date) {
     setState(() {
+      if (date != null) {
+        selectedDate = DateTime.parse(DateFormat('yyyy-MM-dd').format(date));
+      }
+
       currentIndex = index;
+      _children = [
+        HomePage(
+          selectedDate: selectedDate,
+        ),
+        CategoryPage()
+      ];
     });
   }
 
@@ -30,7 +48,12 @@ class _MainPageState extends State<MainPage> {
               accent: Color.fromRGBO(78, 83, 230, 1.0),
               locale: 'id',
               backButton: false,
-              onDateChanged: (value) => print(value),
+              onDateChanged: (value) {
+                setState(() {
+                  selectedDate = value;
+                  updateView(0, selectedDate);
+                });
+              },
               firstDate: DateTime.now().subtract(Duration(days: 140)),
               lastDate: DateTime.now(),
             )
@@ -56,7 +79,9 @@ class _MainPageState extends State<MainPage> {
             Navigator.of(context)
                 .push(
               MaterialPageRoute(
-                builder: (context) => TransactionPage(),
+                builder: (context) => TransactionPage(
+                  transactionWithCategory: null,
+                ),
               ),
             )
                 .then((value) {
@@ -78,7 +103,7 @@ class _MainPageState extends State<MainPage> {
           children: [
             IconButton(
               onPressed: () {
-                onTapTapped(0);
+                updateView(0, DateTime.now());
               },
               icon: const Icon(Icons.home),
             ),
@@ -87,7 +112,7 @@ class _MainPageState extends State<MainPage> {
             ),
             IconButton(
               onPressed: () {
-                onTapTapped(1);
+                updateView(1, null);
               },
               icon: const Icon(Icons.list),
             ),
